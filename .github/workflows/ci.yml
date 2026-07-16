@@ -29,7 +29,7 @@ jobs:
       - name: Lint (ruff)
         run: ruff check app sample_api demo tests
 
-      - name: Run unit + integration tests (fully offline: SQLite + fakeredis + in-process ASGI)
+      - name: "Run unit + integration tests (fully offline: SQLite + fakeredis + in-process ASGI)"
         run: pytest -q --cov=app --cov-report=term-missing
 
       - name: Verify Docker image builds

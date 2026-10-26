@@ -2,9 +2,11 @@
 
 **A policy-and-budget-enforcing gateway between LLM agents and your internal REST APIs.**
 
+[![CI](https://github.com/SlateGitOrg/agentgate/actions/workflows/ci.yml/badge.svg)](https://github.com/SlateGitOrg/agentgate/actions/workflows/ci.yml)
+
 ![agentgate](assets/hero.png)
 
-## The problem
+## Why
 
 Every team wiring an LLM agent up to real internal APIs hits the same wall: the agent
 needs *some* credential to call your order system, your CRM, your billing API — but
@@ -25,6 +27,15 @@ function-calling tool catalog; register agents with scoped API keys; write allow
 policy rules; set per-agent-per-tool rate limits and cost budgets backed by Redis; and
 every single call — allowed or denied — lands in a Postgres audit log with a replay
 endpoint and an OpenTelemetry trace spanning the whole request.
+
+## Features
+
+- **Tool catalog from OpenAPI**: every operation in an OpenAPI 3.x spec becomes a function-calling tool definition.
+- **Per-agent identity**: scoped API keys (stored only as SHA-256 hashes) or short-lived JWTs.
+- **Fail-closed policy engine**: glob-pattern allow/deny rules with priorities and global overrides.
+- **Rate limits and cost budgets**: Redis-backed, scoped per agent and tool.
+- **Audit log with replay**: every call, allowed or denied, is stored in Postgres and can be re-run against current policy.
+- **OpenTelemetry tracing**: one root span per invocation with child spans for each gate.
 
 ## Architecture
 
@@ -109,6 +120,19 @@ AGENTGATE_DOWNSTREAM_BASE_URL=http://localhost:9000 uvicorn app.main:app --port 
 
 # terminal 3
 AGENTGATE_URL=http://localhost:8000 python demo/demo_agent.py
+```
+
+### Example
+
+After the scripted demo registers an agent and grants it tools, it exercises the gateway:
+
+```text
+3. Agent turn: browse products
+  list_products -> 3 product(s), trace_id=be667370f781b3f82a6d48f8d99ffb70
+4. Agent turn: place an order
+  create_order -> order ord-000001 confirmed, total=2499c
+5. Agent turn: confirm the order (read-back)
+  get_order -> status=confirmed
 ```
 
 ### Running the tests
@@ -210,9 +234,9 @@ tests/                 81 tests: auth, policy, rate limit, budget, gateway e2e,
                        audit replay, OpenAPI ingestion, proxy, app bootstrap
 ```
 
-## What's deliberately out of scope
+## Limitations and non-goals
 
-This is a solo portfolio project, not an enterprise platform: no multi-tenant
+agentgate is deliberately small, not a full enterprise platform: no multi-tenant
 org/RBAC layer above "agent," no Alembic migration chain (the app creates its schema
 at startup via `create_all`, which is the honest thing to do for a project this size),
 and the rate/budget reserve-then-compensate pattern is correct for one agent's
